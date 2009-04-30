@@ -6,6 +6,8 @@ import re, string, pickle, os, urllib
 
 from lxml import html
 
+import curses.ascii
+
 PLUGIN_PREFIX = '/video/feeds'
 
 DAY = 86400
@@ -18,6 +20,7 @@ CACHE_TIME = DAY
 # TODO: Remember items after they disappear from the feed
 # TODO: Generic icons for audio/video
 # TODO: Handle no existing Feeds folder
+# TODO: Write collected feeds to prefs
 
 ####################################################################################################
 
@@ -35,24 +38,32 @@ def Start():
     
 ####################################################################################################
 
-def CreatePrefs():
-  addPref('feeds', dict(), dict(), L('Feeds'))
-  addPref('rolls', list(), list(), L('Feedrolls'))
+#def CreatePrefs():
+#  addPref('feeds', 'text', dict(), L('Feeds'))
+#  addPref('rolls', 'text', list(), L('Feedrolls'))
 
 ####################################################################################################
 
-def MainMenu():  
+def MainMenu():
   dir = MediaContainer()
   dir.nocache = 1
   
   feeds = getFeedsFromFiles()
-  knownFeeds = getPref('feeds')
+  knownFeeds = Data.LoadObject('feeds')
+  if knownFeeds == None:
+    knownFeeds = dict()
+  
+  shouldwritePref = False
+  
   for feedKey in feeds.iterkeys():
     if feedKey not in knownFeeds:
       knownFeeds[feedKey] = feeds[feedKey]
+      shouldwritePref = True
+      
+  if shouldwritePref:
+    Data.SaveObject('feeds', knownFeeds)
   
   knownFeedList = sorted(knownFeeds.iteritems(), key=lambda x: x[1]['title'])
-
   for feed in knownFeedList:
     if feed[1]['enabled']:
       dir.Append(Function(DirectoryItem(feedMenu, title=feed[1]['title'], summary=feed[1]['summary'], thumb=feed[1]['thumb']), key=feed[0]))
@@ -61,9 +72,7 @@ def MainMenu():
   return dir
   
 def feedMenu(sender, key):
-  dir = MediaContainer()
-  Log(sender.itemTitle)
-  dir.title2 = sender.itemTitle
+  dir = MediaContainer(title2=sender.itemTitle, nocache=1)
   
   feedContents = HTTP.Request(key)
   for item in XML.ElementFromString(feedContents).xpath('/rss/channel/item'):
@@ -146,36 +155,48 @@ def addFeedURL(sender, query):
   feedContents = HTTP.Request(query)
   newFeed = getFeedMetaData(feedContents)
   Log(newFeed)
-  knownFeeds = getPref('feeds')
+  knownFeeds = Data.LoadObject('feeds')
   if newFeed['key'] not in knownFeeds:
     knownFeeds[feed['key']] = newFeed
-    setPref('feeds', knowFeeds)
+    Data.SaveObject('feeds', knowFeeds)
   return
 
 def addFeedRollURL(sender, query):
   Log('addFeedRollURL called')
-  knownFeeds = getPref('feeds')
-  knownRolls = getPref('rolls')
+  knownFeeds = Data.LoadObject('feeds')
+  knownRolls = Data.LoadObject('rolls')
   if query not in knownRolls:
     knownRolls.append(query)
-    setPref('rolls', knownRolls)
+    Data.SaveObject('rolls', knownRolls)
     
   newFeeds = getFeeds(query)
-  shouldSetPref = False
+  shouldSaveObject = False
   for newFeed in newFeeds:
     if newFeed['key'] not in knownFeeds:
       knownFeeds[feed['key']] = newFeed
-      shouldSetPref = True
+      shouldSaveObject = True
   
-  if shouldSetPref: setPref('feeds', knowFeeds)
+  if shouldSaveObject: Data.SaveObject('feeds', knowFeeds)
   return
 
 def removeRolls(sender):
   pass
   
 def removeFeeds(sender):
-  pass
+  dir = MediaContainer(title2=L('Remove Feeds'), nocache=1)
+  feeds = Data.LoadObject('feeds')
+  feedList = sorted(feeds.iteritems(), key=lambda x: x[1]['title'])
+  for feed in feedList:
+    if feed[1]['enabled']:
+      dir.Append(Function(DirectoryItem(removeFeed, title=feed[1]['title'], summary=feed[1]['summary'], thumb=feed[1]['thumb']), key=feed[0]))
+  return dir
   
+def removeFeed(sender, key):
+  feeds = Data.LoadObject('feeds')
+  feeds[key]['enabled'] = False
+  Data.SaveObject('feeds', feeds)
+  return
+
 def removeMedia(sender):
   pass
 
