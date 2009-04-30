@@ -12,13 +12,14 @@ DAY = 86400
 CACHE_TIME = DAY
 
 # TODO: Find double posts and take only the last one
-# TODO: Add remove feedroll and remove item menus
+# TODO: Add remove item menus
 # TODO: Add option for media pre-caching
 # TODO: Add import from iTunes podcasts
 # TODO: Remember items after they disappear from the feed
 # TODO: Generic icons for audio/video
 # TODO: Handle no existing Feeds folder
 # TODO: Add UpdateCache()
+# TODO: Track feeds from rolls seperately
 
 ####################################################################################################
 
