@@ -151,44 +151,40 @@ def getFeedsFromFiles():
   feeds = dict()
   for dataFile in os.listdir(dataDir):
     if dataFile != '.DS_Store' and os.path.isfile(dataDir + '/' + dataFile):
-      newFeeds = getFeedMetaDataFromPath(dataDir + '/' + dataFile)
+      newFeeds = getFeeds('file://' + urllib.pathname2url(dataDir + '/' + dataFile))
       for newFeed in newFeeds:
         feeds[newFeed['key']] = newFeed['data']
   return feeds
 
-def getFeedMetaDataFromPath(path):
-  Log(path)
-  (name, ext) = os.path.splitext(path)
-  Log('ext:' + ext)
-  if ext == '.rss' or ext == '.xml':
-    f = open(path)
-    feedContents = f.read()
-    f.close()
-    return [dict(key = 'file://' + urllib.pathname2url(path), data=getFeedMetaData(feedContents))]
+def getFeeds(url):
+  (name, ext) = os.path.splitext(url)
+  groupContents = HTTP.Request(url)
+  newFeeds = list()
+  Log(ext)
+  if ext == '.xml' or ext == '.rss':
+    for feed in XML.ElementFromString(groupContents).xpath('/rss/channel/item/link'):   
+      feedURL = feed.text
+      try:
+        feedContents = HTTP.Request(feedURL)
+        feedData = getFeedMetaData(feedContents)
+        newFeeds.append(dict(key=feedURL, data=feedData))
+      except: Log("Couldn't open " + feedURL)
   elif ext == '.opml':
-    newFeeds = list()
-    f = open(path)
-    opmlContents = f.read()
-    f.close()
-    for feed in XML.ElementFromString(opmlContents).xpath('/opml/body/outline'):
+    for feed in XML.ElementFromString(groupContents).xpath('/opml/body/outline'):
       feedURL = feed.get('xmlUrl')
       try:
         feedContents = HTTP.Request(feedURL)
         feedData = getFeedMetaData(feedContents)
         newFeeds.append(dict(key=feedURL, data=feedData))
       except: Log("Couldn't open " + feedURL)
-    return newFeeds
   else:
-    f = open(path)
-    feedList = f.read()
-    f.close()
-    newFeeds = list()
-    for feedURL in feedList.split('\n'):
-      Log(feedURL)
-      feedContents = HTTP.Request(feedURL)
-      feedData = getFeedMetaData(feedContents)
-      newFeeds.append(dict(key=feedURL, data=feedData))
-    return newFeeds
+    for feedURL in groupContents.split('\n'):
+      try:
+        feedContents = HTTP.Request(feedURL)
+        feedData = getFeedMetaData(feedContents)
+        newFeeds.append(dict(key=feedURL, data=feedData))
+      except: Log("Couldn't open " + feedURL)
+  return newFeeds
 
 def getFeedMetaData(feedContents):
   title = XML.ElementFromString(feedContents).xpath('/rss/channel/title')[0].text
@@ -205,7 +201,6 @@ def getFeedMetaData(feedContents):
 ####################################################################################################
 
 def addFeedURL(sender, query):
-  Log('addFeedURL called')
   feedContents = HTTP.Request(query)
   newFeed = getFeedMetaData(feedContents)
   Log(newFeed)
