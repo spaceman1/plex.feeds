@@ -2,11 +2,9 @@ from PMS import *
 from PMS.Objects import *
 from PMS.Shortcuts import *
 
-import re, string, pickle, os, urllib
+import string, pickle, os, urllib
 
 from lxml import html
-
-import curses.ascii
 
 PLUGIN_PREFIX = '/video/feeds'
 
@@ -14,13 +12,13 @@ DAY = 86400
 CACHE_TIME = DAY
 
 # TODO: Find double posts and take only the last one
-# TODO: Add remove feed and remove item menus
+# TODO: Add remove feedroll and remove item menus
 # TODO: Add option for media pre-caching
 # TODO: Add import from iTunes podcasts
 # TODO: Remember items after they disappear from the feed
 # TODO: Generic icons for audio/video
 # TODO: Handle no existing Feeds folder
-# TODO: Write collected feeds to prefs
+# TODO: Add UpdateCache()
 
 ####################################################################################################
 
@@ -180,7 +178,20 @@ def addFeedRollURL(sender, query):
   return
 
 def removeRolls(sender):
-  pass
+  dir = MediaContainer(title2=L('Remove Feedrolls'), nocache=1)
+  rolls = Data.LoadObject('rolls')
+  
+  rollList = sorted(rolls.iteritems(), key=lambda x: x[1]['title'])
+  for roll in rollList:
+    if roll[1]['enabled']:
+      dir.Append(Function(DirectoryItem(removeRoll, title=roll[1]['title'], summary=roll[1]['summary'], thumb=roll[1]['thumb']), key=roll[0]))
+  return dir
+  
+def removeRoll(sender, key):
+  rolls = Data.LoadObject('rolls')
+  rolls[key]['enabled'] = False
+  Data.SaveObject('rolls', rolls)
+  return
   
 def removeFeeds(sender):
   dir = MediaContainer(title2=L('Remove Feeds'), nocache=1)
@@ -213,18 +224,34 @@ def getFeedsFromFiles():
   return feeds
 
 def getFeeds(url):
+  newFeeds = list()
+  rolls = Data.LoadObject('rolls')
+  if rolls == None:
+    rolls = dict()
+  
+  if url in rolls and not rolls[url]['enabled']:
+    return newFeeds
+  
+  shouldWriteRolls = False
+  
   (name, ext) = os.path.splitext(url)
   groupContents = HTTP.Request(url)
-  newFeeds = list()
-  Log(ext)
+  
   if ext == '.xml' or ext == '.rss':
-    for feed in XML.ElementFromString(groupContents).xpath('/rss/channel/item/link'):   
+    for feed in XML.ElementFromString(groupContents).xpath('/rss/channel/item/link'):
       feedURL = feed.text
       try:
         feedContents = HTTP.Request(feedURL)
         feedData = getFeedMetaData(feedContents)
         newFeeds.append(dict(key=feedURL, data=feedData))
       except: Log("Couldn't open " + feedURL)
+      
+    if url not in rolls:
+      title = XML.ElementFromString(groupContents).xpath('/rss/channel/title')[0].text
+      summary = XML.ElementFromString(groupContents).xpath('/rss/channel/description')[0].text
+      thumb = XML.ElementFromString(groupContents).xpath('/rss/channel/image/url')[0].text
+      rolls[url] = dict(title=title, summary=summary, thumb=thumb, enabled=True)
+      shouldWriteRolls = True
   elif ext == '.opml':
     for feed in XML.ElementFromString(groupContents).xpath('/opml/body/outline'):
       feedURL = feed.get('xmlUrl')
@@ -233,6 +260,11 @@ def getFeeds(url):
         feedData = getFeedMetaData(feedContents)
         newFeeds.append(dict(key=feedURL, data=feedData))
       except: Log("Couldn't open " + feedURL)
+      
+    if url not in rolls:
+      title = XML.ElementFromString(groupContents).xpath('/opml/head/title')[0].text
+      rolls[url] = dict(title=title, summary='', thumb='', enabled=True)
+      shouldWriteRolls = True
   else:
     for feedURL in groupContents.split('\n'):
       try:
@@ -240,6 +272,8 @@ def getFeeds(url):
         feedData = getFeedMetaData(feedContents)
         newFeeds.append(dict(key=feedURL, data=feedData))
       except: Log("Couldn't open " + feedURL)
+      
+  if shouldWriteRolls: Data.SaveObject('rolls', rolls)
   return newFeeds
 
 def getFeedMetaData(feedContents):
@@ -253,6 +287,10 @@ def getFeedMetaData(feedContents):
   except:
     image = ''
   return dict(title=title, summary=description, thumb=image, enabled=True)
+  
+def getRollMetaData(rollContents):
+  rollType = XML.ElementFromString(rollContents).xpath('name()')
+  Log(rollType)
 
 ####################################################################################################  
 
