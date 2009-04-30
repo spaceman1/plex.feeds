@@ -18,7 +18,6 @@ CACHE_TIME = DAY
 # TODO: Remember items after they disappear from the feed
 # TODO: Generic icons for audio/video
 # TODO: Handle no existing Feeds folder
-# TODO: Sort Main menu
 
 ####################################################################################################
 
@@ -52,7 +51,9 @@ def MainMenu():
     if feedKey not in knownFeeds:
       knownFeeds[feedKey] = feeds[feedKey]
   
-  for feed in knownFeeds.iteritems():
+  knownFeedList = sorted(knownFeeds.iteritems(), key=lambda x: x[1]['title'])
+
+  for feed in knownFeedList:
     if feed[1]['enabled']:
       dir.Append(Function(DirectoryItem(feedMenu, title=feed[1]['title'], summary=feed[1]['summary'], thumb=feed[1]['thumb']), key=feed[0]))
   
