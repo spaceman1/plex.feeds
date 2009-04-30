@@ -12,13 +12,13 @@ DAY = 86400
 CACHE_TIME = DAY
 
 # TODO: Find double posts and take only the last one
-# TODO: Allow users to specify xml/opml/lists manually
 # TODO: Add remove feed and remove item menus
 # TODO: Add option for media pre-caching
 # TODO: Add import from iTunes podcasts
 # TODO: Remember items after they disappear from the feed
 # TODO: Generic icons for audio/video
 # TODO: Handle no existing Feeds folder
+# TODO: Sort Main menu
 
 ####################################################################################################
 
@@ -38,6 +38,7 @@ def Start():
 
 def CreatePrefs():
   addPref('feeds', dict(), dict(), L('Feeds'))
+  addPref('rolls', list(), list(), L('Feedrolls'))
 
 ####################################################################################################
 
@@ -130,14 +131,47 @@ def settingsMenu(sender):
   dir = MediaContainer(title2=L('Settings'))
   dir.Append(Function(DirectoryItem(addFeeds, title=L('Add Feeds'))))
   dir.Append(Function(DirectoryItem(removeFeeds, title=L('Remove Feeds'))))
+  dir.Append(Function(SearchDirectoryItem(addFeedRollURL, title=L('Add Feedroll'), prompt=L('Enter feedroll address'))))
+  dir.Append(Function(DirectoryItem(removeRolls, title=L('Remove Feedroll'))))
   dir.Append(Function(DirectoryItem(removeMedia, title=L('Remove Media'))))
   return dir
   
 def addFeeds(sender):
   dir = MediaContainer(title2=L('Add Feeds'))
-  dir.Append(Function(SearchDirectoryItem(addFeedURL, title=L('Manual'), prompt=L('Enter feed address'))))
+  dir.Append(Function(SearchDirectoryItem(addFeedURL, title=L('Add Feed'), prompt=L('Enter feed address'))))
   return dir
       
+def addFeedURL(sender, query):
+  feedContents = HTTP.Request(query)
+  newFeed = getFeedMetaData(feedContents)
+  Log(newFeed)
+  knownFeeds = getPref('feeds')
+  if newFeed['key'] not in knownFeeds:
+    knownFeeds[feed['key']] = newFeed
+    setPref('feeds', knowFeeds)
+  return
+
+def addFeedRollURL(sender, query):
+  Log('addFeedRollURL called')
+  knownFeeds = getPref('feeds')
+  knownRolls = getPref('rolls')
+  if query not in knownRolls:
+    knownRolls.append(query)
+    setPref('rolls', knownRolls)
+    
+  newFeeds = getFeeds(query)
+  shouldSetPref = False
+  for newFeed in newFeeds:
+    if newFeed['key'] not in knownFeeds:
+      knownFeeds[feed['key']] = newFeed
+      shouldSetPref = True
+  
+  if shouldSetPref: setPref('feeds', knowFeeds)
+  return
+
+def removeRolls(sender):
+  pass
+  
 def removeFeeds(sender):
   pass
   
@@ -197,18 +231,6 @@ def getFeedMetaData(feedContents):
   except:
     image = ''
   return dict(title=title, summary=description, thumb=image, enabled=True)
-
-####################################################################################################
-
-def addFeedURL(sender, query):
-  feedContents = HTTP.Request(query)
-  newFeed = getFeedMetaData(feedContents)
-  Log(newFeed)
-  knownFeeds = getPref('feeds')
-  if newFeed['key'] not in knownFeeds:
-    knownFeeds[feed['key']] = newFeed
-    setPref('feeds', knowFeeds)
-  return
 
 ####################################################################################################  
 
