@@ -11,11 +11,6 @@ PLUGIN_PREFIX = '/video/feeds'
 DAY = 86400
 CACHE_TIME = DAY
 
-
-# done: Add handling for WebVideoItems
-# done: Convert html im descriptions to text
-# done: Grab links from opml files
-
 # TODO: Find double posts and take only the last one
 # TODO: Allow users to specify xml/opml/lists manually
 # TODO: Add remove feed and remove item menus
@@ -38,13 +33,13 @@ def Start():
   MediaContainer.art = R('art-default.jpg')
   
   HTTP.SetCacheTime(CACHE_TIME)
-  
-  
+    
 ####################################################################################################
 
 def CreatePrefs():
   addPref('feeds', dict(), dict(), L('Feeds'))
 
+####################################################################################################
 
 def MainMenu():  
   dir = MediaContainer()
@@ -63,17 +58,6 @@ def MainMenu():
   dir.Append(Function(DirectoryItem(settingsMenu, title=L('Settings'))))
   return dir
   
-def getFeedsFromFiles():
-  dataDir = Data.__dataPath + '/Feeds'
-  feeds = dict()
-  for dataFile in os.listdir(dataDir):
-    if dataFile != '.DS_Store' and os.path.isfile(dataDir + '/' + dataFile):
-      newFeeds = getFeedMetaDataFromPath(dataDir + '/' + dataFile)
-      for newFeed in newFeeds:
-        feeds[newFeed['key']] = newFeed['data']
-  return feeds
-
-
 def feedMenu(sender, key):
   dir = MediaContainer()
   Log(sender.itemTitle)
@@ -140,6 +124,38 @@ def feedMenu(sender, key):
       dir.Append(initURL(url, title=title, summary=description, duration=duration))
   return dir
 
+####################################################################################################
+
+def settingsMenu(sender):
+  dir = MediaContainer(title2=L('Settings'))
+  dir.Append(Function(DirectoryItem(addFeeds, title=L('Add Feeds'))))
+  dir.Append(Function(DirectoryItem(removeFeeds, title=L('Remove Feeds'))))
+  dir.Append(Function(DirectoryItem(removeMedia, title=L('Remove Media'))))
+  return dir
+  
+def addFeeds(sender):
+  dir = MediaContainer(title2=L('Add Feeds'))
+  dir.Append(Function(SearchDirectoryItem(addFeedURL, title=L('Manual'), prompt=L('Enter feed address'))))
+  return dir
+      
+def removeFeeds(sender):
+  pass
+  
+def removeMedia(sender):
+  pass
+
+####################################################################################################
+
+def getFeedsFromFiles():
+  dataDir = Data.__dataPath + '/Feeds'
+  feeds = dict()
+  for dataFile in os.listdir(dataDir):
+    if dataFile != '.DS_Store' and os.path.isfile(dataDir + '/' + dataFile):
+      newFeeds = getFeedMetaDataFromPath(dataDir + '/' + dataFile)
+      for newFeed in newFeeds:
+        feeds[newFeed['key']] = newFeed['data']
+  return feeds
+
 def getFeedMetaDataFromPath(path):
   Log(path)
   (name, ext) = os.path.splitext(path)
@@ -174,8 +190,6 @@ def getFeedMetaDataFromPath(path):
       newFeeds.append(dict(key=feedURL, data=feedData))
     return newFeeds
 
-  
-
 def getFeedMetaData(feedContents):
   title = XML.ElementFromString(feedContents).xpath('/rss/channel/title')[0].text
   try:
@@ -188,17 +202,7 @@ def getFeedMetaData(feedContents):
     image = ''
   return dict(title=title, summary=description, thumb=image, enabled=True)
 
-def settingsMenu(sender):
-  dir = MediaContainer(title2=L('Settings'))
-  dir.Append(Function(DirectoryItem(addFeeds, title=L('Add Feeds'))))
-  dir.Append(Function(DirectoryItem(removeFeeds, title=L('Remove Feeds'))))
-  dir.Append(Function(DirectoryItem(removeMedia, title=L('Remove Media'))))
-  return dir
-  
-def addFeeds(sender):
-  dir = MediaContainer(title2=L('Add Feeds'))
-  dir.Append(Function(SearchDirectoryItem(addFeedURL, title=L('Manual'), prompt=L('Enter feed address'))))
-  return dir
+####################################################################################################
 
 def addFeedURL(sender, query):
   Log('addFeedURL called')
@@ -210,12 +214,6 @@ def addFeedURL(sender, query):
     knownFeeds[feed['key']] = newFeed
     setPref('feeds', knowFeeds)
   return
-      
-def removeFeeds(sender):
-  pass
-  
-def removeMedia(sender):
-  pass
 
 ####################################################################################################  
 
@@ -250,12 +248,3 @@ def addPref(id, kind, default, name):
   Prefs.Add(id, kind, pickle.dumps(default), name)
   
 ####################################################################################################
-
-def logXpathFunctions():
-  page = HTTP.Request("http://www.w3schools.com/Xpath/xpath_functions.asp", encoding="ISO-8859-1")
-  for table in XML.ElementFromString(page, True).xpath('//table[@class="reference"]'):
-    for tr in table.xpath('child::tr'):
-      try:
-        td = tr.xpath('child::td[1]')[0]
-        Log(html.tostring(td, method="text", encoding="ISO-8859-1"))
-      except: pass
