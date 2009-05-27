@@ -32,7 +32,80 @@ def Start():
   HTTP.SetCacheTime(CACHE_TIME)
     
 ####################################################################################################
+# Boxee: <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/" xmlns:boxee="as http://boxee.tv/spec/rss/">
+# rss/channel
+#   title
+#   boxee:display
+#     boxee:view[@default=<an id in view-option>]
+#       boxee:view-option[@id=<type int>][@view-type="line|thumb|thumb-with-preview|defailed-list"]
+#     boxee:sort[@default=<an id in sort-option>][@folder-position="start|end|integral"
+#       boxee:sort-option[@id=<type int>][sort-by="label|date|episode|none"][sort-order="ascending|descending"][@sort-type-name=<type str>]
+#   boxee:expiry # minutes for which this RSS should be cached. 0 means that the RSS should not be cached
+#   boxee:background-image
+#   
+#   item
+#     title
+#     pubDate # RFC 822
+#     link
+#     description
+#     media:content[@url][@type=<MIME-type>][@duration]
+#     media:thumbnail
+#     media:credit[@role="actor|director|writer|artist|author"]
+#     media:rating[@scheme="urn:mpaa|urn:tv|urn:user"]
+#     media:copyright
+#     media:keywords # comma-delimited
+#     media:category[@scheme="urn:boxee:genre|urn:boxee:title-type|urn:boxee:episode|urn:boxee:season|urn:boxee:show-title|urn:boxee:view-count|urn:boxee:view-count"]
+#     boxee:alternative-link[@label|@thumb|@url]
 
+
+# Yahoo: <rss version="2.0" xmlns:media="http://video.search.yahoo.com/mrss">
+# rss/channel/item
+#   media:content[@url][@fileSize=<byteCount>][@type=<MIME type>][@medium="image|audio|video|document|executable"][@isDefault="true|false"][@expression="sample|full|nonstop"][@bitrate=<kbps>][@framerate][@samplingrate=<kHz>][@channels][@duration=<seconds>][@height][@width][@lang=<RFC 3066>]
+#   media:group
+#     media:content # See above
+# channel|item|media:content|media:group
+#   media:adult
+#   media:rating[@scheme="urn:simple|urn:icra|urn:mpaa|urn:vchip"]
+#   media:title[@type="plain|html"]
+#   media:description[@type="plain|html"]
+#   media:keywords
+#   media:thumbnail[@url][@height][@width]
+#   media:category[@scheme=<url>][@label] # scheme defaults to http://video.search.yahoo.com/mrss/category_schema
+#   media:hash[@algo="md5|sha-1"]
+#   media:player[@url][@height][@width]
+#   media:credit[@role][@scheme] # scheme defaults to urn:ebu
+#   media:copyright
+#   media:text[@type="plain|html"][@lang][@start][@end]
+#   media:restriction[@relationship="allow|deny"][@type="country|uri"] # country is ISO 3166
+
+# iTunes: <rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0">
+# rss/channel
+#   ttl: minutes between refreshes. Default 24hr
+#   link
+#   copyright
+#   category
+#   itunes:new-feed-url
+#   itunes:owner
+#     itunes:name
+#     itunes:email
+#   item
+#     pubDate # RFC 2822
+#     itunes:pubDate # alternative to pubDate
+#     itunes:category
+#     itunes:duration # HH:MM:SS or total number of seconds
+#     enclosure
+#     guid # if omited use url
+# channel|item
+#   title
+#   itunes:author
+#   itunes:block
+#   itunes:explicit # yes|no|clean # default no
+#   itunes:image
+#   itunes:keywords
+#   itunes:subtitle
+#   itunes:summary
+#   language
+####################################################################################################
 def MainMenu():
   dir = MediaContainer()
   dir.nocache = 1
@@ -165,25 +238,30 @@ def removeMedia(sender):
 
 ####################################################################################################
 
-def getFeeds(url):
-  # For reference only
-  if ext == '.xml' or ext == '.rss':
-    title = XML.ElementFromString(groupContents).xpath('/rss/channel/title')[0].text
-    summary = XML.ElementFromString(groupContents).xpath('/rss/channel/description')[0].text
-    thumb = XML.ElementFromString(groupContents).xpath('/rss/channel/image/url')[0].text
-  elif ext == '.opml':
-    title = XML.ElementFromString(groupContents).xpath('/opml/head/title')[0].text
+#def getFeeds(url):
+  #### For reference only ####
+#  if ext == '.xml' or ext == '.rss':
+#    title = XML.ElementFromString(groupContents).xpath('/rss/channel/title')[0].text
+#    summary = XML.ElementFromString(groupContents).xpath('/rss/channel/description')[0].text
+#    thumb = XML.ElementFromString(groupContents).xpath('/rss/channel/image/url')[0].text
+#  elif ext == '.opml':
+#    title = XML.ElementFromString(groupContents).xpath('/opml/head/title')[0].text
 
 def getFeedMetaData(feedContents):
-  title = XML.ElementFromString(feedContents).xpath('/rss/channel/title')[0].text
+  feed = XML.ElementFromString(feedContents)
+  title = feed.xpath('/rss/channel/title')[0].text
   try:
-    description = XML.ElementFromString(feedContents).xpath('/rss/channel/description')[0].text
+    description = feed.xpath('/rss/channel/description')[0].text
   except:
     description = ''
   try:
-    image = XML.ElementFromString(feedContents).xpath('/rss/channel/image/url')[0].text
+    image = feed.xpath('/rss/channel/image/url')[0].text
   except:
     image = ''
+  try:
+    art = feed.xpath('/rss/channel/*[name()="boxee:background-image"]')[0].text
+  except:
+    art = ''
   return dict(title=title, summary=description, thumb=image, enabled=True)
   
 ####################################################################################################  
