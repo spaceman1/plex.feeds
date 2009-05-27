@@ -105,6 +105,19 @@ def Start():
 #   itunes:subtitle
 #   itunes:summary
 #   language
+
+# urn:simple: adult, nonadult
+# urn:mpaa: g, nc-17, pg, pg-13, r, x
+# urn:v-chip: e, c, c8, g, pg, 14+, 18+
+# urn:v-chip: tv-y, tv-y7, tv-y7-fv, tv-g, tv-pg, tv-14, tv-ma
+# urn:icra: # Format yes | unknown | no 
+#   Nudity: n[a-c] 1 | nz 0 | nz 1
+#   Sexual Material: s[a-f] 1 | sz 0 | sz 1
+#   Violence: v[a-j] 1 | vz 0 | vz 1
+#   Language: l[a-c] 1 | lz 0 | lz 1
+#   Potentially harmful activities: o[a-h] 1 | oz 0 | oz 1
+#   User generated content: c[ab] 1 | cz 0 | cz 1
+#   *.Context: x[a-e] 1
 ####################################################################################################
 def MainMenu():
   dir = MediaContainer()
