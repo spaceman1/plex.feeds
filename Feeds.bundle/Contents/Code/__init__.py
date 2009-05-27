@@ -2,7 +2,7 @@ from PMS import *
 from PMS.Objects import *
 from PMS.Shortcuts import *
 
-import string, pickle, os, urllib
+import os
 
 from lxml import html
 
@@ -37,33 +37,17 @@ def Start():
     
 ####################################################################################################
 
-#def CreatePrefs():
-#  addPref('feeds', 'text', dict(), L('Feeds'))
-#  addPref('rolls', 'text', list(), L('Feedrolls'))
-
-####################################################################################################
-
 def MainMenu():
   dir = MediaContainer()
   dir.nocache = 1
   
-  feeds = getFeedsFromFiles()
   knownFeeds = Data.LoadObject('feeds')
-  if knownFeeds == None:
-    knownFeeds = dict()
-  
+  if knownFeeds == None: knownFeeds = dict()
+    
   shouldwritePref = False
-  
-  for feedKey in feeds.iterkeys():
-    if feedKey not in knownFeeds:
-      knownFeeds[feedKey] = feeds[feedKey]
-      shouldwritePref = True
-      
-  if shouldwritePref:
-    Data.SaveObject('feeds', knownFeeds)
-  
-  knownFeedList = sorted(knownFeeds.iteritems(), key=lambda x: x[1]['title'])
-  for feed in knownFeedList:
+    
+  feeds = sorted(knownFeeds.iteritems(), key=lambda x: x[1]['title'])
+  for feed in feeds:
     if feed[1]['enabled']:
       dir.Append(Function(DirectoryItem(feedMenu, title=feed[1]['title'], summary=feed[1]['summary'], thumb=feed[1]['thumb']), key=feed[0]))
   
@@ -140,8 +124,6 @@ def settingsMenu(sender):
   dir = MediaContainer(title2=L('Settings'))
   dir.Append(Function(DirectoryItem(addFeeds, title=L('Add Feeds'))))
   dir.Append(Function(DirectoryItem(removeFeeds, title=L('Remove Feeds'))))
-  dir.Append(Function(SearchDirectoryItem(addFeedRollURL, title=L('Add Feedroll'), prompt=L('Enter feedroll address'))))
-  dir.Append(Function(DirectoryItem(removeRolls, title=L('Remove Feedroll'))))
   dir.Append(Function(DirectoryItem(removeMedia, title=L('Remove Media'))))
   return dir
   
@@ -151,42 +133,15 @@ def addFeeds(sender):
   return dir
       
 def addFeedURL(sender, query):
-  feedContents = HTTP.Request(query)
+  key = String.Unquote(query)
+  feedContents = HTTP.Request(key)
   newFeed = getFeedMetaData(feedContents)
   Log(newFeed)
   knownFeeds = Data.LoadObject('feeds')
-  if newFeed['key'] not in knownFeeds:
-    knownFeeds[feed['key']] = newFeed
+  if newFeed[key] not in knownFeeds:
+    knownFeeds[feed[key]] = newFeed
     Data.SaveObject('feeds', knowFeeds)
   return
-
-def addFeedRollURL(sender, query):
-  Log('addFeedRollURL called')
-  knownFeeds = Data.LoadObject('feeds')
-  knownRolls = Data.LoadObject('rolls')
-  if query not in knownRolls:
-    knownRolls.append(query)
-    Data.SaveObject('rolls', knownRolls)
-    
-  newFeeds = getFeeds(query)
-  shouldSaveObject = False
-  for newFeed in newFeeds:
-    if newFeed['key'] not in knownFeeds:
-      knownFeeds[feed['key']] = newFeed
-      shouldSaveObject = True
-  
-  if shouldSaveObject: Data.SaveObject('feeds', knowFeeds)
-  return
-
-def removeRolls(sender):
-  dir = MediaContainer(title2=L('Remove Feedrolls'), nocache=1)
-  rolls = Data.LoadObject('rolls')
-  
-  rollList = sorted(rolls.iteritems(), key=lambda x: x[1]['title'])
-  for roll in rollList:
-    if roll[1]['enabled']:
-      dir.Append(Function(DirectoryItem(removeRoll, title=roll[1]['title'], summary=roll[1]['summary'], thumb=roll[1]['thumb']), key=roll[0]))
-  return dir
   
 def removeRoll(sender, key):
   rolls = Data.LoadObject('rolls')
@@ -213,16 +168,6 @@ def removeMedia(sender):
   pass
 
 ####################################################################################################
-
-def getFeedsFromFiles():
-  dataDir = Data.__dataPath + '/Feeds'
-  feeds = dict()
-  for dataFile in os.listdir(dataDir):
-    if dataFile != '.DS_Store' and os.path.isfile(dataDir + '/' + dataFile):
-      newFeeds = getFeeds('file://' + urllib.pathname2url(dataDir + '/' + dataFile))
-      for newFeed in newFeeds:
-        feeds[newFeed['key']] = newFeed['data']
-  return feeds
 
 def getFeeds(url):
   newFeeds = list()
@@ -289,10 +234,6 @@ def getFeedMetaData(feedContents):
     image = ''
   return dict(title=title, summary=description, thumb=image, enabled=True)
   
-def getRollMetaData(rollContents):
-  rollType = XML.ElementFromString(rollContents).xpath('name()')
-  Log(rollType)
-
 ####################################################################################################  
 
 def getType(url):
@@ -315,14 +256,3 @@ def initURL(url, title, summary, duration):
   if urlType == WebVideoItem: return WebVideoItem(url, title=title, summary=summary, duration=duration)
   if urlType == TrackItem: return TrackItem(url, title=title, duration=duration)
 ####################################################################################################  
-
-def setPref(id, value):
-  Prefs.Set(id, pickle.dumps(value))
-
-def getPref(id):
-  return pickle.loads(Prefs.Get(id))
-  
-def addPref(id, kind, default, name):
-  Prefs.Add(id, kind, pickle.dumps(default), name)
-  
-####################################################################################################
