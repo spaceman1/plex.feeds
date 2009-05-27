@@ -2,8 +2,6 @@ from PMS import *
 from PMS.Objects import *
 from PMS.Shortcuts import *
 
-import os
-
 from lxml import html
 
 PLUGIN_PREFIX = '/video/feeds'
@@ -17,9 +15,7 @@ CACHE_TIME = DAY
 # TODO: Add import from iTunes podcasts
 # TODO: Remember items after they disappear from the feed
 # TODO: Generic icons for audio/video
-# TODO: Handle no existing Feeds folder
 # TODO: Add UpdateCache()
-# TODO: Track feeds from rolls seperately
 
 ####################################################################################################
 
@@ -170,57 +166,13 @@ def removeMedia(sender):
 ####################################################################################################
 
 def getFeeds(url):
-  newFeeds = list()
-  rolls = Data.LoadObject('rolls')
-  if rolls == None:
-    rolls = dict()
-  
-  if url in rolls and not rolls[url]['enabled']:
-    return newFeeds
-  
-  shouldWriteRolls = False
-  
-  (name, ext) = os.path.splitext(url)
-  groupContents = HTTP.Request(url)
-  
+  # For reference only
   if ext == '.xml' or ext == '.rss':
-    for feed in XML.ElementFromString(groupContents).xpath('/rss/channel/item/link'):
-      feedURL = feed.text
-      try:
-        feedContents = HTTP.Request(feedURL)
-        feedData = getFeedMetaData(feedContents)
-        newFeeds.append(dict(key=feedURL, data=feedData))
-      except: Log("Couldn't open " + feedURL)
-      
-    if url not in rolls:
-      title = XML.ElementFromString(groupContents).xpath('/rss/channel/title')[0].text
-      summary = XML.ElementFromString(groupContents).xpath('/rss/channel/description')[0].text
-      thumb = XML.ElementFromString(groupContents).xpath('/rss/channel/image/url')[0].text
-      rolls[url] = dict(title=title, summary=summary, thumb=thumb, enabled=True)
-      shouldWriteRolls = True
+    title = XML.ElementFromString(groupContents).xpath('/rss/channel/title')[0].text
+    summary = XML.ElementFromString(groupContents).xpath('/rss/channel/description')[0].text
+    thumb = XML.ElementFromString(groupContents).xpath('/rss/channel/image/url')[0].text
   elif ext == '.opml':
-    for feed in XML.ElementFromString(groupContents).xpath('/opml/body/outline'):
-      feedURL = feed.get('xmlUrl')
-      try:
-        feedContents = HTTP.Request(feedURL)
-        feedData = getFeedMetaData(feedContents)
-        newFeeds.append(dict(key=feedURL, data=feedData))
-      except: Log("Couldn't open " + feedURL)
-      
-    if url not in rolls:
-      title = XML.ElementFromString(groupContents).xpath('/opml/head/title')[0].text
-      rolls[url] = dict(title=title, summary='', thumb='', enabled=True)
-      shouldWriteRolls = True
-  else:
-    for feedURL in groupContents.split('\n'):
-      try:
-        feedContents = HTTP.Request(feedURL)
-        feedData = getFeedMetaData(feedContents)
-        newFeeds.append(dict(key=feedURL, data=feedData))
-      except: Log("Couldn't open " + feedURL)
-      
-  if shouldWriteRolls: Data.SaveObject('rolls', rolls)
-  return newFeeds
+    title = XML.ElementFromString(groupContents).xpath('/opml/head/title')[0].text
 
 def getFeedMetaData(feedContents):
   title = XML.ElementFromString(feedContents).xpath('/rss/channel/title')[0].text
